@@ -1,11 +1,11 @@
 ---
 name: second-opinion
-description: "Independently verify the claim Claude just made, using Exa (web evidence) and GPT via Flovia (a second model judging the claim strictly against that evidence). Use when Yuta says '2nd opinion', 'second opinion', '/second-opinion', 'verify that', 'double check that', 'are you sure', 'fact check that', 'confirm that claim', 'is that actually true', 'sanity check', or asks for another model's read on something the session just said. Verifies factual claims only, not opinions or copy."
+description: "Independently verify the claim Claude just made, using Exa (web evidence) and GPT via Flovia (a second model judging the claim strictly against that evidence). Use when the user says '2nd opinion', 'second opinion', '/second-opinion', 'verify that', 'double check that', 'are you sure', 'fact check that', 'confirm that claim', 'is that actually true', 'sanity check', or asks for another model's read on something the session just said. Verifies factual claims only, not opinions or copy."
 ---
 
 # Second Opinion
 
-Yuta's rule is accuracy over confidence. This skill is the check he runs when he is about to act on something Claude said and wants it confirmed by evidence Claude did not write and a model that is not Claude.
+Accuracy over confidence. This skill is the check to run before acting on something Claude said, confirming it with evidence Claude did not write and a model that is not Claude.
 
 Two sources, two jobs. **Exa** pulls public web evidence. **GPT (gpt-6-luna via Flovia)** judges the claim against that evidence only, with outside knowledge forbidden. Claude's own opinion is the thing under test, so Claude does not vote.
 
@@ -13,11 +13,11 @@ Flovia's rule for the GPT tool: it is only a writer over data another Flovia too
 
 ## Step 1: isolate the claim
 
-Take the last substantive factual claim Claude made in the session, or the one Yuta points at. If the last message had several, pick the ones a reader would act on (numbers, dates, who did what, how a thing works) and cap at 3. Each claim becomes its own loop.
+Take the last substantive factual claim Claude made in the session, or the one the user points at. If the last message had several, pick the ones a reader would act on (numbers, dates, who did what, how a thing works) and cap at 3. Each claim becomes its own loop.
 
-Skip and say so when the claim is: an opinion, a judgment call, a draft or copy, something about Yuta's own files or data, or anything derived from Pearl, Slack, Notion, or Telegram. Those are not public and Exa cannot see them. Offer the right internal check instead (Pearl query, reread the source).
+Skip and say so when the claim is: an opinion, a judgment call, a draft or copy, something about the user's own files or data, or anything derived from private sources (internal databases, Slack, Notion, Telegram, email). Those are not public and Exa cannot see them. Offer the right internal check instead (query the source system, reread the document).
 
-Rewrite each claim as one plain sentence with every number and date kept. Show it to Yuta in the output so he can see exactly what was tested.
+Rewrite each claim as one plain sentence with every number and date kept. Show it in the output so the user can see exactly what was tested.
 
 ## Step 2: pull evidence with Exa
 
@@ -25,7 +25,7 @@ Call `mcp__flovia__flovia_exa` once per claim. Shape that works:
 
 ```
 request_text:    the claim sentence, verbatim, prefixed "Verify the claim: "
-purpose:         one sentence, why Yuta wants this checked (from context, "unknown" if not said)
+purpose:         one sentence, why the user wants this checked (from context, "unknown" if not said)
 query:           public search terms, specific, with the entity name and year. Not the claim sentence.
 num_results:     5 (raise to 8 for contested or fast moving claims)
 fresh:           true when the claim is time sensitive (prices, holdings, headcount, who runs what)
@@ -87,7 +87,7 @@ Then, after all claims, at most three lines from Claude:
 - Where the verdict is weaker than the claim deserves because the evidence was thin, not because the claim is wrong (e.g. GPT could not confirm a percentage that is simple arithmetic from the confirmed numbers). Say that plainly; do not upgrade the verdict.
 - Flovia usage only if a result set `for_user.mention` true or a notice came back.
 
-Do not soften a CONTRADICTED verdict. Do not re-argue the claim against GPT. If Claude thinks GPT misread the evidence, say that in one line and let Yuta decide.
+Do not soften a CONTRADICTED verdict. Do not re-argue the claim against GPT. If Claude thinks GPT misread the evidence, say that in one line and let the user decide.
 
 ## Known behaviours
 
@@ -95,4 +95,4 @@ Do not soften a CONTRADICTED verdict. Do not re-argue the claim against GPT. If 
 - Exa's "fresh" results still need `publishedDate` checked. Corpstacking, stocktitan, and official press pages are good for treasury and filing claims. SeekingAlpha excerpts are opinion.
 - Within 15 minutes the same `operation_id` and request replays free. Reuse it if a call times out instead of minting a new id.
 - Each Exa call costs about 1% of the 5-hour Flovia window; each GPT call less than 1%. Three claims is roughly 6% of the window.
-- This skill is the one sanctioned reason to call `flovia_openai` without Yuta naming GPT, because invoking the skill is the ask and Exa results are the data. Outside this skill the global rule stands.
+- Flovia's guidance is to call `flovia_openai` only when the user chooses and only over data another Flovia tool pulled. Invoking this skill is that choice and Exa results are that data, so the skill satisfies the rule by construction.
